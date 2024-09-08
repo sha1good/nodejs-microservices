@@ -7,6 +7,7 @@ const {
   EXCHANGE_NAME,
   CUSTOMER_SERVICE,
   MSG_QUEUE_URL,
+  QUEUE_NAME
 } = require("../config");
 
 //Utility functions
@@ -75,22 +76,31 @@ module.exports.PublishMessage = (channel, service, msg) => {
 
 module.exports.SubscribeMessage = async (channel, service) => {
   await channel.assertExchange(EXCHANGE_NAME, "direct", { durable: true });
-  const q = await channel.assertQueue("", { exclusive: true });
+ 
+ const q = await channel.assertQueue(QUEUE_NAME);
   console.log(` Waiting for messages in queue: ${q.queue}`);
 
   channel.bindQueue(q.queue, EXCHANGE_NAME, CUSTOMER_SERVICE);
+  channel.consume(q.queue, data =>{
+    console.log("Received Data")
+    console.log(data.content.toString());
+    service.SubscribeEvents(data.content.toString());
+    channel.ack(data)
+  })
 
-  channel.consume(
-    q.queue,
-    (msg) => {
-      if (msg.content) {
-        console.log("the message is:", msg.content.toString());
-        service.SubscribeEvents(msg.content.toString());
-      }
-      console.log("[X] received");
-    },
-    {
-      noAck: true,
-    }
-  );
+  /// FOR TEMP QUEUE
+  // const q = await channel.assertQueue("", { exclusive: true });
+  // channel.consume(
+  //   q.queue,
+  //   (msg) => {
+  //     if (msg.content) {
+  //       console.log("the message is:", msg.content.toString());
+  //       service.SubscribeEvents(msg.content.toString());
+  //     }
+  //     console.log("[X] received");
+  //   },
+  //   {
+  //     noAck: true,
+  //   }
+  // );
 };
